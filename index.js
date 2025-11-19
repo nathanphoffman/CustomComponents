@@ -15,25 +15,49 @@ function registerFunction(name, elementClass) {
 }
 
 function getElementRenderer(name) {
-    return (str)=>`<${name}>${str || ''}</${name}>`;
+    return (str, events) => {
+
+        return `<${name}>${str || ''}</${name}>`;
+    };
 }
 
-['h1', 'h2','h3', 'section', 'p', 'div', 'span', 'button'].forEach((name) => window[name] = getElementRenderer(name));
+['h1', 'h2', 'h3', 'section', 'p', 'div', 'span', 'button']
+    .forEach((name) => window[name] = getElementRenderer(name));
 
 class Component extends HTMLElement {
 
     constructor() {
         super();
+        this.events = [];
     }
 
     connectedCallback() {
         this.innerHTML = this.render();
+        this.registerEvents();
     }
 
-    disconnectedCallback() {
+    onClick(selector, handler) {
+        this.events.push({ selector, type: 'click', handler });
+    }
+
+    registerEvents() {
+        this.events.forEach(({ selector, type, handler }) => {
+            const elements = this.querySelectorAll(selector);
+            elements.forEach((element) => {
+                element.addEventListener(type, handler);
+                this.events.push({ element, type, handler });
+            });
+        });
+    }
+
+    removeEvents() {
         this.eventListeners.forEach(({ element, type, handler }) => {
             element.removeEventListener(type, handler);
         });
+    }
+
+    disconnectedCallback() {
+        this.removeEvents();
     }
 
     render() {
@@ -59,7 +83,8 @@ class Page2 extends Component {
     }
 
     render() {
-        return `<p>This is a child component.</p>`
+        this.onClick('p.hello', () => console.log('clicked'));
+        return `<p>This is a child <p class="hello">hello</p component.</p>`
     }
 }
 
