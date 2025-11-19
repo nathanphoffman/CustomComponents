@@ -26,18 +26,38 @@ function getElementRenderer(name) {
 
 class Component extends HTMLElement {
 
-    constructor() {
+    constructor(state) {
         super();
+        this.state = state;
         this.events = [];
+        //setTimeout(()=>this.disconnectedCallback(),1500);
+    }
+
+    setState(state) {
+        this.state = state;
+        this.refresh();
     }
 
     connectedCallback() {
+        this.refresh();
+    }
+
+    refresh() {
         this.innerHTML = this.render();
+        this.removeEvents();
         this.registerEvents();
     }
 
     onClick(selector, handler) {
-        this.events.push({ selector, type: 'click', handler });
+        this.onEvent("click",selector,handler)
+    }
+
+    onChange(selector, handler) {
+        this.onEvent("change",selector,handler)
+    }
+
+    onEvent(event, selector, handler) {
+        this.events.push({ selector, type: event, handler });
     }
 
     registerEvents() {
@@ -51,12 +71,14 @@ class Component extends HTMLElement {
     }
 
     removeEvents() {
-        this.eventListeners.forEach(({ element, type, handler }) => {
-            element.removeEventListener(type, handler);
+        this.events.forEach(({ selector, type, handler }) => {
+            const elements = this.querySelectorAll(selector);
+            elements.forEach((el)=>el.removeEventListener(type, handler));
         });
     }
 
     disconnectedCallback() {
+        console.log('disconnectdd was called');
         this.removeEvents();
     }
 
@@ -79,12 +101,12 @@ class Page extends Component {
 
 class Page2 extends Component {
     constructor() {
-        super();
+        super({clicked: "default click"});
     }
 
     render() {
-        this.onClick('p.hello', () => console.log('clicked'));
-        return `<p>This is a child <p class="hello">hello</p component.</p>`
+        this.onClick('p.hello', () => this.setState({clicked:"clicked!"}));
+        return `<p>This is a child <p class="hello">hello ${this.state.clicked}</p component.</p>`
     }
 }
 
