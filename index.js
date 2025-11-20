@@ -26,9 +26,10 @@ function getElementRenderer(name) {
 
 class Component extends HTMLElement {
 
-    constructor(state) {
+    constructor(state, preference) {
         super();
         this.state = state;
+        this.preference = preference;
         this.events = [];
         //setTimeout(()=>this.disconnectedCallback(),1500);
     }
@@ -95,18 +96,25 @@ class Page extends Component {
     }
 
     render() {
-        return div(h1(c['my-component-child']()));
+        return `<div>
+            <h1>Welcome to my component!</h1>
+            <my-component-child></my-component-child>
+        </div>`;
     }
 }
 
 class Page2 extends Component {
     constructor() {
-        super({clicked: "default click"});
+        super({clicked: "default click"}, {input: "default"});
     }
 
     render() {
         this.onClick('p.hello', () => this.setState({clicked:"clicked!"}));
-        return `<p>This is a child <p class="hello">hello ${this.state.clicked}</p component.</p>`
+        this.onChange('input', () => this.preference.input = this.querySelector('input').value);
+
+        return `<p>This is a child <p class="hello">hello ${this.state.clicked}</p>.</p>
+            <input type="text" class="input-box" value="${this.preference.input}"/>
+        `
     }
 }
 
