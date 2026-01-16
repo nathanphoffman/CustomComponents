@@ -1,0 +1,37 @@
+
+import { Component, defineElements } from './src/component';
+
+class Root extends Component {
+    constructor() {
+        super({},{});
+    }
+
+    render() {
+        return `<div>
+            <h1>Welcome to my component2!</h1>
+            <c-clicker></c-clicker>
+        </div>`;
+    }
+}
+
+class Clicker extends Component {
+    constructor() {
+        super({ clicked: "default click" }, { input: "default" });
+    }
+
+    render() {
+        this.onClick('p.hello', () => this.setState({ clicked: "clicked!" }));
+        this.onChange('input', () => this.preference.input = this.querySelector('input').value);
+
+        
+        return /* HTML */`
+            <p>This is a child <p class="hello">hello ${this.state.clicked}</p>.</p>
+            <input type="text" class="input-box" value="${this.preference.input}"/>
+        `
+    }
+}
+
+defineElements([
+    ['c-root', Root],
+    ['c-clicker', Clicker]
+]);
