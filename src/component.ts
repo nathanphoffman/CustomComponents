@@ -1,24 +1,44 @@
 
-const c = [];
+type Trigger = string;
+type Handler = ()=>void;
+type Selector = string;
+type CustomElementName = string;
 
-export function defineElements(arr) {
+export type Event = {
+    trigger: Trigger
+    handler: Handler
+    selector: Selector
+}
 
-    function defineElement(name, elementClass) {
+type State = object | undefined;
+type Profile = object | undefined;
+
+// we must use the constructor as it is not an instance we are passing but the component class
+type ComponentConstructor = new (...args: any[]) => Component<object, object>;
+
+export function defineElements(arr: [CustomElementName, ComponentConstructor][]) {
+
+    function defineElement(name: CustomElementName, elementClass: ComponentConstructor) {
         customElements.define(name, elementClass);
     }
-
 
     //arr.forEach(([name, elementClass]) => registerFunction(name, elementClass));
     arr.forEach(([name, elementClass]) => defineElement(name, elementClass));
 }
 
-export class Component extends HTMLElement {
+export class Component<T extends State, P extends Profile> extends HTMLElement {
 
-    constructor(state, preference) {
+    state: T;
+    events: Event[] = [];
+
+    // this is used to store user preferences without updating state such as storing input field data
+    // this is useful when wanting to store data you can easily look at later for retrieval rather than dom fetching
+    profile: P;
+
+    constructor(state?: T, profile?: P) {
         super();
-        this.state = state;
-        this.preference = preference;
-        this.events = [];
+        this.state = state || {} as never;
+        this.profile = profile || {} as never;
     }
 
     // Base Methods:
@@ -31,7 +51,7 @@ export class Component extends HTMLElement {
         this.removeEvents();
     }
 
-    setState(state) {
+    setState(state: T) {
         this.state = state;
         this.refresh();
     }
@@ -43,36 +63,36 @@ export class Component extends HTMLElement {
         this.registerEvents();
     }
 
-    onClick(selector, handler) {
+    onClick(selector: Selector, handler: Handler) {
         this.onEvent("click", selector, handler)
     }
 
-    onChange(selector, handler) {
+    onChange(selector: Selector, handler: Handler) {
         this.onEvent("change", selector, handler)
     }
 
-    onEvent(event, selector, handler) {
-        this.events.push({ selector, type: event, handler });
+    onEvent(trigger: Trigger, selector: Selector, handler: Handler) {
+        this.events.push({ selector, trigger, handler });
     }
 
     registerEvents() {
-        this.events.forEach(({ selector, type, handler }) => {
+        this.events.forEach(({ selector, trigger, handler }) => {
             const elements = this.querySelectorAll(selector);
             elements.forEach((element) => {
-                element.addEventListener(type, handler);
-                this.events.push({ element, type, handler });
+                element.addEventListener(trigger, handler);
+                this.events.push({ selector, trigger, handler });
             });
         });
     }
 
     removeEvents() {
-        this.events.forEach(({ selector, type, handler }) => {
+        this.events.forEach(({ selector, trigger, handler }) => {
             const elements = this.querySelectorAll(selector);
-            elements.forEach((el) => el.removeEventListener(type, handler));
+            elements.forEach((el) => el.removeEventListener(trigger, handler));
         });
     }
 
-    render() {
+    render(): string {
         throw new Error("Required method 'render' must be implemented.");
     }
 }
