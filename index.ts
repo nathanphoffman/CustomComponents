@@ -1,7 +1,7 @@
 
 import { Component, defineElements } from './src/component';
 
-class Root extends Component<never, never> {
+class Root extends Component<never> {
     constructor() {
         super()
     }
@@ -15,24 +15,27 @@ class Root extends Component<never, never> {
 }
 
 type ClickerState = { clicked: string }
-type ClickerProfile = { input?: string | null, input2?: string | null }
+//type ClickerProfile = { input?: string | null, input2?: string | null }
 
-class Clicker extends Component<ClickerState, ClickerProfile> {
+
+
+class Clicker extends Component<ClickerState> {
     constructor() {
-        super({ clicked: "has not been clicked" }, { input: "this text saves to profile", input2: "calls safeRefresh onchange" });
+        super({ clicked: "has not been clicked" });
     }
 
     render() {
-        this.onClick('p', () => this.setState({ clicked: "was clicked!" }));
-        this.onChange('input.one', (e) => this.profile.input = (e.target as HTMLInputElement).value);
+        this.onClick('p', () => this.setDefaults({ clicked: "was clicked!" }));
+        //this.onChange('input.one', (e) => this.profile.input = (e.target as HTMLInputElement).value);
         
         this.onInput('input.two', (e) => {
-            this.profile.input2 = (e.target as HTMLInputElement).value;
-            this.safeRefresh(500);
+            //this.profile.input2 = (e.target as HTMLInputElement).value;
+            this.safeHardRefresh(500);
         });
 
+
         return /* HTML */`
-            <p>This text has an onclick handler on it and "${this.state.clicked}" this is tracked with state.</p>
+            <p>This text has an onclick handler on it and "${this.defaults.clicked}" this is tracked with state.</p>
             <br/>
             <div>Below is an input field that onchange writes its value to the profile but not to state</div>
             <input type="text" class="one" value="${this.profile.input}"/>

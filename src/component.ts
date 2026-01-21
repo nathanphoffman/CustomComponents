@@ -10,11 +10,22 @@ export type ComponentEvent = {
     selector: Selector
 }
 
-type State = object | undefined;
-type Profile = object | undefined;
+type Defaults = object | undefined;
+
+type ProfileElement = {
+    onUpdate?: ()=>{},
+    executeUpdate?: ()=>{},
+    selector: Selector,
+    attribute?: string | "className" | "id" | "style" | "value",
+    value: ()=>{}
+}
+
+type Profile = {
+    [key: string]: ProfileElement
+};
 
 // we must use the constructor as it is not an instance we are passing but the component class
-type ComponentConstructor = new (...args: any[]) => Component<object, object>;
+type ComponentConstructor = new (...args: any[]) => Component<object>;
 
 export function defineElements(arr: [CustomElementName, ComponentConstructor][]) {
 
@@ -26,28 +37,28 @@ export function defineElements(arr: [CustomElementName, ComponentConstructor][])
     arr.forEach(([name, elementClass]) => defineElement(name, elementClass));
 }
 
-export class Component<T extends State, P extends Profile> extends HTMLElement {
+export class Component<T extends Defaults> extends HTMLElement {
 
     MAX_REFRESH_SECONDS: number = 5 as const;
 
     firstRefreshAttempt: number = 0;
-    state: T;
+    defaults: T;
     events: ComponentEvent[] = [];
     safeRefreshId: number = 0;
 
     // this is used to store user preferences without updating state such as storing input field data
     // this is useful when wanting to store data you can easily look at later for retrieval rather than dom fetching
-    profile: P;
+    profile: Profile;
 
-    constructor(state?: T, profile?: P) {
+    constructor(defaults?: T, profile?: Profile) {
         super();
-        this.state = state || {} as never;
+        this.defaults = defaults || {} as never;
         this.profile = profile || {} as never;
     }
 
     // Base Methods:
     connectedCallback() {
-        this.refresh();
+        this.unsafeHardRefresh();
     }
 
     disconnectedCallback() {
@@ -55,55 +66,41 @@ export class Component<T extends State, P extends Profile> extends HTMLElement {
         this.removeEvents();
     }
 
-    setState(state: T) {
+    setDefaults(defaults: T) {
         console.log("was clicked");
-        this.state = state;
-        this.safeRefresh();
+        this.defaults = defaults;
+        this.safeHardRefresh();
+    }
+
+    setProfile(profile: Profile) {
+
     }
 
     // can be used to trigger a manual refresh, this is considered much more performant and safer 
-    // than calling redirect directly
-    safeRefresh(ms?: number) {
+    // than calling refresh directly
+    safeHardRefresh(ms?: number) {
 
         const now: number = (new Date).getTime();
         if (this.firstRefreshAttempt == 0) this.firstRefreshAttempt = now;
 
         // prevent refreshing from ever taking more than MAX_REFRESH_SECONDS incase debouncing keeps preventing a refresh
         if (this.firstRefreshAttempt > 0 && now > (this.firstRefreshAttempt + this.MAX_REFRESH_SECONDS * 1000)) {
-            this.refresh();
+            this.unsafeHardRefresh();
         }
         else {
             clearTimeout(this.safeRefreshId);
-            this.safeRefreshId = setTimeout(this.refresh.bind(this), ms || 200);
+            this.safeRefreshId = setTimeout(this.unsafeHardRefresh.bind(this), ms || 200);
         }
     }
 
-    storeInHiddenContainer(html: string): HTMLDivElement {
-        const hiddenContainer = document.createElement('div');
-        hiddenContainer.id = 'hiddenElement';
-        hiddenContainer.style.display = 'none';
-        hiddenContainer.innerHTML = html;
-        document.body.appendChild(hiddenContainer);
-        return hiddenContainer;
-    }
-
     // Added Methods:
-    refresh() {
+    unsafeHardRefresh() {
         // The next thing I need to do is render instead to a hidden element and do a compare on that hidden element
         // Then add each element back to the dom one at a time
         console.log("refresh called");
         this.firstRefreshAttempt = 0;
         this.removeEvents();
-
-        const hiddenContainer = this.storeInHiddenContainer(this.render());
-
-        const childElements = hiddenContainer.children; // Get the child elements
-
-        for (let i = 0; i < childElements.length; i++) {
-            const element = childElements[i]; // Access each child element
-            console.log(`Element ID: ${element.id}`); // Log the ID of the element
-        }
-
+        this.innerHTML = this.render();
         this.registerEvents();
         console.log(this.events);
     }
@@ -120,8 +117,6 @@ export class Component<T extends State, P extends Profile> extends HTMLElement {
     onInput(selector: Selector, handler: Handler, delay: number = 250) {
 
         this.onChange(selector, handler);
-
-        // safeRefresh is already debounced
         this.onKeyup(selector, handler);
     }
 
