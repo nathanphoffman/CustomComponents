@@ -28,6 +28,9 @@ export function defineElements(arr: [CustomElementName, ComponentConstructor][])
 
 export class Component<T extends State, P extends Profile> extends HTMLElement {
 
+    MAX_REFRESH_SECONDS: number = 5 as const;
+
+    firstRefreshAttempt: number = 0;
     state: T;
     events: ComponentEvent[] = [];
     safeRefreshId: number = 0;
@@ -44,7 +47,6 @@ export class Component<T extends State, P extends Profile> extends HTMLElement {
 
     // Base Methods:
     connectedCallback() {
-        
         this.refresh();
     }
 
@@ -56,23 +58,52 @@ export class Component<T extends State, P extends Profile> extends HTMLElement {
     setState(state: T) {
         console.log("was clicked");
         this.state = state;
-        this.refresh();
+        this.safeRefresh();
     }
 
     // can be used to trigger a manual refresh, this is considered much more performant and safer 
     // than calling redirect directly
     safeRefresh(ms?: number) {
-        clearTimeout(this.safeRefreshId);
-        this.safeRefreshId = setTimeout(this.refresh.bind(this), ms || 500);
+
+        const now: number = (new Date).getTime();
+        if (this.firstRefreshAttempt == 0) this.firstRefreshAttempt = now;
+
+        // prevent refreshing from ever taking more than MAX_REFRESH_SECONDS incase debouncing keeps preventing a refresh
+        if (this.firstRefreshAttempt > 0 && now > (this.firstRefreshAttempt + this.MAX_REFRESH_SECONDS * 1000)) {
+            this.refresh();
+        }
+        else {
+            clearTimeout(this.safeRefreshId);
+            this.safeRefreshId = setTimeout(this.refresh.bind(this), ms || 200);
+        }
+    }
+
+    storeInHiddenContainer(html: string): HTMLDivElement {
+        const hiddenContainer = document.createElement('div');
+        hiddenContainer.id = 'hiddenElement';
+        hiddenContainer.style.display = 'none';
+        hiddenContainer.innerHTML = html;
+        document.body.appendChild(hiddenContainer);
+        return hiddenContainer;
     }
 
     // Added Methods:
     refresh() {
-        //console.log("number of events is ", this.events.length)
-        //console.log(this.events);
+        // The next thing I need to do is render instead to a hidden element and do a compare on that hidden element
+        // Then add each element back to the dom one at a time
         console.log("refresh called");
+        this.firstRefreshAttempt = 0;
         this.removeEvents();
-        this.innerHTML = this.render();
+
+        const hiddenContainer = this.storeInHiddenContainer(this.render());
+
+        const childElements = hiddenContainer.children; // Get the child elements
+
+        for (let i = 0; i < childElements.length; i++) {
+            const element = childElements[i]; // Access each child element
+            console.log(`Element ID: ${element.id}`); // Log the ID of the element
+        }
+
         this.registerEvents();
         console.log(this.events);
     }
@@ -85,20 +116,19 @@ export class Component<T extends State, P extends Profile> extends HTMLElement {
     onChange(selector: Selector, handler: Handler) {
         this.onEvent("change", selector, handler)
     }
-    /*
-        onInput(selector: Selector, handler: Handler, delay: number = 250) {
-    
-            const debouncedHandler = handler;
-    
-            this.onChange(selector, );
-            this.keyup
-            
-        }
-    
-        onKeyup(selector: Selector, handler: Handler) {
-    
-        }
-    */
+
+    onInput(selector: Selector, handler: Handler, delay: number = 250) {
+
+        this.onChange(selector, handler);
+
+        // safeRefresh is already debounced
+        this.onKeyup(selector, handler);
+    }
+
+    onKeyup(selector: Selector, handler: Handler) {
+        this.onEvent("keyup", selector, handler)
+    }
+
     onEvent(trigger: Trigger, selector: Selector, handler: Handler) {
         this.events.push({ selector, trigger, handler });
     }
@@ -112,7 +142,7 @@ export class Component<T extends State, P extends Profile> extends HTMLElement {
             });
         });
     }
-        
+
 
     removeEvents() {
         this.events.forEach(({ selector, trigger, handler }) => {

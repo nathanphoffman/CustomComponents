@@ -26,9 +26,9 @@ class Clicker extends Component<ClickerState, ClickerProfile> {
         this.onClick('p', () => this.setState({ clicked: "was clicked!" }));
         this.onChange('input.one', (e) => this.profile.input = (e.target as HTMLInputElement).value);
         
-        this.onChange('input.two', (e) => {
+        this.onInput('input.two', (e) => {
             this.profile.input2 = (e.target as HTMLInputElement).value;
-            this.safeRefresh(1500);
+            this.safeRefresh(500);
         });
 
         return /* HTML */`
